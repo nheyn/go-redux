@@ -12,6 +12,13 @@ type Updater interface {
 // A State is a map that contains the current data for a Store.
 type State map[interface{}]Updater
 
+// Selects a shallow copy of the the given state.
+func (selSt *State) SelectFrom(currSt *State) {
+	for key, data := range *currSt {
+		(*selSt)[key] = data
+	}
+}
+
 // Gets the update version of the updaters in the given state, after the action is performed on them.
 func performUpdates(s State, action interface{}) (State, error) {
 	newState := State{}
