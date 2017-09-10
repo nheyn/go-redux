@@ -23,3 +23,10 @@ func (subs *subscriberSet) remove(sub subscriber) bool {
 	delete(*subs, sub)
 	return true
 }
+
+// Sends the given Store to all of the set's subscribers.
+func (subs *subscriberSet) publish(st Store) {
+	for sub, _ := range *subs {
+		sub <- st
+	}
+}
