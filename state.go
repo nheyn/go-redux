@@ -1,14 +1,5 @@
 package store
 
-// A value that can create an updated version of itself based on a given action.
-// NOTE: All Updaters should be immutable
-type Updater interface {
-
-	// Creates a new Updater with the updates for the given action.
-	// NOTE: Because Updaters should be immutable, always create a new version when an update occures.
-	Update(ac interface{}) (Updater, error)
-}
-
 // A State is a map that contains the current data for a Store.
 type State map[interface{}]Updater
 
@@ -19,7 +10,7 @@ func (selSt *State) SelectFrom(currSt *State) {
 	}
 }
 
-// Gets the update version of the updaters in the given state, after the action is performed on them.
+// Gets the updated version of the updaters in the given state, after the action is performed on them.
 func performUpdates(s State, action interface{}) (State, error) {
 	newState := State{}
 	for name, data := range s {
