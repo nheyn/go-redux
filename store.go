@@ -50,31 +50,26 @@ type queuedAction struct {
 // the state is aviable.
 func (s Store) listenForActions() {
 	for curr := range s.actionQueue {
-		done := make(chan struct{})
+		currState := State{}
+		s.Select(&currState)
 
-		s.accessState <- func(st *State) {
-			//NOTE, started in it's own goroutine and using the s.accessState channel twice so others
-			//      can read the state while performUpdates(...) is running.
-			go func(orginalState State) {
-				newState, err := performUpdates(orginalState, curr.action)
-				if err != nil {
-					curr.err <- err
-					close(curr.err)
-					close(done)
-					return
-				}
+		newState, err := performUpdates(currState, curr.action)
+		if err != nil {
+			curr.err <- err
+			close(curr.err)
 
-				s.accessState <- func(mutableSt *State) {
-					for key, data := range newState {
-						(*mutableSt)[key] = data
-					}
-
-					close(curr.err)
-					close(done)
-				}
-			}(*st)
+			continue
 		}
 
+		done := make(chan struct{})
+		s.accessState <- func(mutableSt *State) {
+			for key, data := range newState {
+				(*mutableSt)[key] = data
+			}
+
+			close(curr.err)
+			close(done)
+		}
 		<-done
 	}
 }
