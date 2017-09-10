@@ -28,6 +28,17 @@ func (s Store) Dispatch(action interface{}) error {
 	return <-errChan
 }
 
+// Select allows the given selector to pull its required data from the current State of the Store.
+func (s Store) Select(sel Selector) {
+	done := make(chan struct{})
+	s.accessState <- func(st *State) {
+		defer close(done)
+
+		sel.SelectFrom(st)
+	}
+	<-done
+}
+
 // A struct that contains an action wating to be dispatched to the Updaters. It also includes a channel
 // send any errors that occur, and is closed when the action is complete.
 type queuedAction struct {

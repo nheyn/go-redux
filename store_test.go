@@ -15,27 +15,23 @@ func TestGivenInitialState(t *testing.T) {
 
 	st := New(initialState)
 
-	wait := make(chan struct{})
-	st.accessState <- func(currState *State) {
-		defer close(wait)
+	currState := State{}
+	st.Select(&currState)
 
-		if len(initialState) != len(*currState) {
-			t.Error("State from the Store has ", len(initialState), " Updaters and the intial state has ", len(*currState))
+	if len(initialState) != len(currState) {
+		t.Error("State from the Store has ", len(initialState), " Updaters and the intial state has ", len(currState))
+	}
+
+	for key, initialData := range initialState {
+		data, exists := currState[key]
+		if !exists {
+			t.Error("Missing ", key, " the State in the Store")
 		}
 
-		for key, initialData := range initialState {
-			s := *currState
-			data, exists := s[key]
-			if !exists {
-				t.Error("Missing ", key, " the State in the Store")
-			}
-
-			if data.(testUpdater).name != initialData.(testUpdater).name {
-				t.Error("Inncorrect data the State in the Store in Updater ", key)
-			}
+		if data.(testUpdater).name != initialData.(testUpdater).name {
+			t.Error("Inncorrect data the State in the Store in Updater ", key)
 		}
 	}
-	<-wait
 }
 
 func TestStoreWillCallUpdate(t *testing.T) {
@@ -54,23 +50,20 @@ func TestStoreWillCallUpdate(t *testing.T) {
 		return
 	}
 
-	wait := make(chan struct{})
-	st.accessState <- func(updatedState *State) {
-		defer close(wait)
+	updatedState := State{}
+	st.Select(&updatedState)
 
-		for key, data := range *updatedState {
-			testData := data.(testUpdater)
+	for key, data := range updatedState {
+		testData := data.(testUpdater)
 
-			if !testData.didUpdate() {
-				t.Error("Update method not called on", key)
-			}
+		if !testData.didUpdate() {
+			t.Error("Update method not called on", key)
+		}
 
-			if testData.actions[0] != testAction {
-				t.Error("Update method called with incorrect action, ", testData.actions[0], ", on ", key)
-			}
+		if testData.actions[0] != testAction {
+			t.Error("Update method called with incorrect action, ", testData.actions[0], ", on ", key)
 		}
 	}
-	<-wait
 }
 
 func TestStoreWillQueueActions(t *testing.T) {
@@ -99,30 +92,27 @@ func TestStoreWillQueueActions(t *testing.T) {
 	}
 
 	wg.Wait()
-	wg.Add(1)
-	st.accessState <- func(s *State) {
-		defer wg.Done()
 
-		for key, data := range *s {
-			testData := data.(testUpdater)
+	currState := State{}
+	st.Select(&currState)
 
-			if !testData.didUpdate() {
-				t.Error("Update method not called on", key)
-				continue
-			}
+	for key, data := range currState {
+		testData := data.(testUpdater)
 
-			if len(testData.actions) != senders*actionPerSender {
-				t.Error(
-					"Update method should have been called",
-					senders*actionPerSender,
-					"but was called",
-					len(testData.actions),
-					"on",
-					key,
-				)
-			}
+		if !testData.didUpdate() {
+			t.Error("Update method not called on", key)
+			continue
+		}
+
+		if len(testData.actions) != senders*actionPerSender {
+			t.Error(
+				"Update method should have been called",
+				senders*actionPerSender,
+				"but was called",
+				len(testData.actions),
+				"on",
+				key,
+			)
 		}
 	}
-
-	wg.Wait()
 }
