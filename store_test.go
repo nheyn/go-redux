@@ -173,3 +173,63 @@ func TestStoreWillTrackSubscribers(t *testing.T) {
 		}
 	}
 }
+
+func TestStoreWillUpdateSubscribers(t *testing.T) {
+	state := State{
+		"Updater 0": testUpdater{},
+		"Updater 1": testUpdater{},
+		"Updater 2": testUpdater{},
+	}
+
+	st := New(state)
+	subscribers := 3
+	actionPerSubscriber := 10
+
+	var wg sync.WaitGroup
+	wg.Add(subscribers)
+	for i := 0; i < subscribers; i++ {
+		testSub := make(chan Store, actionPerSubscriber)
+		st.Subscribe(testSub)
+
+		go func() {
+			defer wg.Done()
+
+			for j := 0; j < actionPerSubscriber; j++ {
+				currStore := <-testSub
+				currState := State{}
+				currStore.Select(&currState)
+
+				for key, data := range currState {
+					testData := data.(testUpdater)
+
+					if len(testData.actions) != j+1 {
+						t.Error(
+							"After", j+1, "dispatches a subscriber",
+							"(in", key, "at index", i, ")",
+							"it already has", len(testData.actions), "actions",
+						)
+						t.Error(testData.actions)
+					}
+
+					if val, isInt := testData.actions[j].(int); !isInt || val != j {
+						t.Error(
+							"After", j+1, "dispatches a subscriber",
+							"(in", key, "at index", i, ")",
+							"has the incorrect action:", testData.actions[j],
+						)
+					}
+				}
+			}
+		}()
+	}
+
+	for j := 0; j < actionPerSubscriber; j++ {
+		st.Dispatch(j)
+
+		//NOTE, if done without .Sleep(...), a tests action might be missed by the test code
+		//TODO, add a way to guarantee .Select(...) can get every state
+		time.Sleep(time.Millisecond)
+	}
+
+	wg.Wait()
+}

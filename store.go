@@ -68,28 +68,44 @@ type queuedAction struct {
 // the state is aviable.
 func (s Store) listenForActions() {
 	for curr := range s.actionQueue {
-		currState := State{}
-		s.Select(&currState)
-
-		newState, err := performUpdates(currState, curr.action)
+		err := s.performAction(curr.action)
 		if err != nil {
 			curr.err <- err
-			close(curr.err)
-
-			continue
 		}
 
-		done := make(chan struct{})
-		s.accessState <- func(mutableSt *State) {
-			for key, data := range newState {
-				(*mutableSt)[key] = data
-			}
-
-			close(curr.err)
-			close(done)
-		}
-		<-done
+		close(curr.err)
 	}
+}
+
+// Perform the give action on the current State of the Store. It an error is returned,
+// the State will not be updated.
+func (s Store) performAction(action interface{}) error {
+	// Perform the action on the current state
+	currState := State{}
+	s.Select(&currState)
+
+	newState, err := performUpdates(currState, action)
+	if err != nil {
+		return err
+	}
+
+	// Update the store with the updated state
+	done := make(chan struct{})
+	s.accessState <- func(mutableSt *State) {
+		defer close(done)
+
+		for key, data := range newState {
+			(*mutableSt)[key] = data
+		}
+	}
+	<-done
+
+	// Tell subscribers about the change
+	s.accessSubscribers <- func(subs *subscriberSet) {
+		subs.publish(s)
+	}
+
+	return nil
 }
 
 // A method that will keep track of the subscriberSet, which can only be accessed throught the
