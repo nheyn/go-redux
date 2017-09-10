@@ -1,6 +1,10 @@
 package store
 
-import "testing"
+import (
+	"sync"
+	"testing"
+	"time"
+)
 
 func TestGivenInitialState(t *testing.T) {
 	initialState := State{
@@ -67,4 +71,58 @@ func TestStoreWillCallUpdate(t *testing.T) {
 		}
 	}
 	<-wait
+}
+
+func TestStoreWillQueueActions(t *testing.T) {
+	state := State{
+		"Updater 0": testUpdater{},
+		"Updater 1": testUpdater{},
+		"Updater 2": testUpdater{},
+	}
+
+	st := New(state)
+	senders := 3
+	actionPerSender := 10
+
+	var wg sync.WaitGroup
+	wg.Add(senders)
+	for i := 0; i < senders; i++ {
+		go func(groupdId int) {
+			defer wg.Done()
+
+			for j := 0; j < actionPerSender; j++ {
+				st.Dispatch(groupdId)
+
+				time.Sleep(time.Duration(groupdId) * time.Millisecond)
+			}
+		}(i)
+	}
+
+	wg.Wait()
+	wg.Add(1)
+	st.accessState <- func(s *State) {
+		defer wg.Done()
+
+		for key, data := range *s {
+			testData := data.(testUpdater)
+
+			if !testData.didUpdate() {
+				t.Error("Update method not called on", key)
+				continue
+			}
+
+			if len(testData.actions) != senders*actionPerSender {
+				t.Error(
+					"Update method should have been called",
+					senders*actionPerSender,
+					"but was called",
+					len(testData.actions),
+					"on",
+					key,
+				)
+			}
+		}
+	}
+
+	wg.Wait()
 }
