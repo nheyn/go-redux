@@ -116,3 +116,60 @@ func TestStoreWillQueueActions(t *testing.T) {
 		}
 	}
 }
+
+func TestStoreWillTrackSubscribers(t *testing.T) {
+	state := State{
+		"Updater 0": testUpdater{},
+		"Updater 1": testUpdater{},
+		"Updater 2": testUpdater{},
+	}
+
+	testSubs := []subscriber{
+		make(chan Store),
+		make(chan Store),
+		make(chan Store),
+	}
+
+	st := New(state)
+
+	unsubs := []func() bool{}
+	for _, testSub := range testSubs {
+		unsub := st.Subscribe(testSub)
+
+		unsubs = append(unsubs, unsub)
+	}
+
+	done := make(chan struct{})
+	st.accessSubscribers <- func(subs *subscriberSet) {
+		defer close(done)
+
+		for i, testSub := range testSubs {
+			if _, hasSub := (*subs)[testSub]; !hasSub {
+				t.Error("The subscriber, at index", i, "did not subscribe")
+			}
+		}
+	}
+
+	for i, unsub := range unsubs {
+		if didUnsub := unsub(); !didUnsub {
+			t.Error("The subscriber, at index", i, "did not unsubscribe correctly")
+		}
+	}
+
+	done = make(chan struct{})
+	st.accessSubscribers <- func(subs *subscriberSet) {
+		defer close(done)
+
+		for i, testSub := range testSubs {
+			if _, hasSub := (*subs)[testSub]; hasSub {
+				t.Error("The subscriber, at index", i, "did not unsubscribe")
+			}
+		}
+	}
+
+	for i, unsub := range unsubs {
+		if didUnsub := unsub(); didUnsub {
+			t.Error("The subscriber, at index", i, "did not fail when unsubscribe more then once")
+		}
+	}
+}
