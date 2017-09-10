@@ -108,16 +108,6 @@ func (s Store) performAction(action interface{}) error {
 	return nil
 }
 
-// A method that will keep track of the subscriberSet, which can only be accessed throught the
-// accessSubscribers channel.
-func (s Store) trackSubscribers() {
-	subs := subscriberSet{}
-
-	for accessFn := range s.accessSubscribers {
-		accessFn(&subs)
-	}
-}
-
 // A method that will keep track of the state, which can only be accessed throught the accessState
 // channel. The data in the given State will be put into the tracked State to start.
 func (s Store) trackState(initialState State) {
@@ -128,5 +118,15 @@ func (s Store) trackState(initialState State) {
 
 	for accessFn := range s.accessState {
 		accessFn(&currState)
+	}
+}
+
+// A method that will keep track of the subscriberSet, which can only be accessed throught the
+// accessSubscribers channel.
+func (s Store) trackSubscribers() {
+	subs := subscriberSet{}
+
+	for accessFn := range s.accessSubscribers {
+		accessFn(&subs)
 	}
 }
