@@ -3,19 +3,30 @@ package store
 import "testing"
 
 type testUpdater struct {
-	didUpdate bool
-	action    interface{}
+	name    string
+	actions []interface{}
 }
 
 func (u testUpdater) Update(action interface{}) (Updater, error) {
-	return testUpdater{true, action}, nil
+	var newActions []interface{}
+	if u.actions == nil {
+		newActions = []interface{}{action}
+	} else {
+		newActions = append(u.actions, action)
+	}
+
+	return testUpdater{u.name, newActions}, nil
+}
+
+func (u testUpdater) didUpdate() bool {
+	return u.actions != nil && len(u.actions) > 0
 }
 
 func TestStateWillCallUpdate(t *testing.T) {
 	state := State{
-		"Updater 0": testUpdater{false, nil},
-		"Updater 1": testUpdater{false, nil},
-		"Updater 2": testUpdater{false, nil},
+		"Updater 0": testUpdater{},
+		"Updater 1": testUpdater{},
+		"Updater 2": testUpdater{},
 	}
 
 	testAction := "Test action"
@@ -28,12 +39,13 @@ func TestStateWillCallUpdate(t *testing.T) {
 	for key, data := range updatedState {
 		testData := data.(testUpdater)
 
-		if !testData.didUpdate {
+		if !testData.didUpdate() {
 			t.Error("Update method not called on", key)
+			continue
 		}
 
-		if testData.action != testAction {
-			t.Error("Update method called with incorrect action, ", testData.action, ", on ", key)
+		if testData.actions[0] != testAction {
+			t.Error("Update method called with incorrect action, ", testData.actions[0], ", on ", key)
 		}
 	}
 }
