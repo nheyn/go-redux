@@ -1,5 +1,7 @@
 package store
 
+import "context"
+
 // A Store keeps track of data in a State, and "attempts to make state mutations predictable".
 type Store struct {
 	actionQueue       chan queuedAction
@@ -24,9 +26,9 @@ func New(initialState State) Store {
 
 // Dispatches the given action to all of the Updaters in the state of the Store. If an error is
 // returned, then the State will not not change (even for the Updaters that had already completed).
-func (s Store) Dispatch(action interface{}) error {
+func (s Store) Dispatch(ctx context.Context, action interface{}) error {
 	errChan := make(chan error)
-	s.actionQueue <- queuedAction{action, errChan}
+	s.actionQueue <- queuedAction{ctx, action, errChan}
 
 	return <-errChan
 }
@@ -60,6 +62,7 @@ func (s Store) Subscribe(sub subscriber) func() bool {
 // A struct that contains an action wating to be dispatched to the Updaters. It also includes a channel
 // send any errors that occur, and is closed when the action is complete.
 type queuedAction struct {
+	ctx    context.Context
 	action interface{}
 	err    chan error
 }
@@ -68,7 +71,7 @@ type queuedAction struct {
 // the state is aviable.
 func (s Store) listenForActions() {
 	for curr := range s.actionQueue {
-		err := s.performAction(curr.action)
+		err := s.performAction(curr.ctx, curr.action)
 		if err != nil {
 			curr.err <- err
 		}
@@ -79,12 +82,12 @@ func (s Store) listenForActions() {
 
 // Perform the give action on the current State of the Store. It an error is returned,
 // the State will not be updated.
-func (s Store) performAction(action interface{}) error {
+func (s Store) performAction(ctx context.Context, action interface{}) error {
 	// Perform the action on the current state
 	currState := State{}
 	s.Select(&currState)
 
-	newState, err := performUpdates(currState, action)
+	newState, err := performUpdates(ctx, currState, action)
 	if err != nil {
 		return err
 	}

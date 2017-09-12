@@ -1,6 +1,7 @@
 package store
 
 import (
+	"context"
 	"sync"
 	"testing"
 	"time"
@@ -44,7 +45,7 @@ func TestStoreWillCallUpdate(t *testing.T) {
 	st := New(state)
 
 	testAction := "Test action"
-	err := st.Dispatch(testAction)
+	err := st.Dispatch(context.Background(), testAction)
 	if err != nil {
 		t.Fatal(err)
 		return
@@ -84,7 +85,7 @@ func TestStoreWillQueueActions(t *testing.T) {
 			defer wg.Done()
 
 			for j := 0; j < actionPerSender; j++ {
-				st.Dispatch(groupdId)
+				st.Dispatch(context.Background(), groupdId)
 
 				time.Sleep(time.Duration(groupdId) * time.Millisecond)
 			}
@@ -224,7 +225,7 @@ func TestStoreWillUpdateSubscribers(t *testing.T) {
 	}
 
 	for j := 0; j < actionPerSubscriber; j++ {
-		st.Dispatch(j)
+		st.Dispatch(context.Background(), j)
 
 		//NOTE, if done without .Sleep(...), a tests action might be missed by the test code
 		//TODO, add a way to guarantee .Select(...) can get every state

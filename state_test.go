@@ -1,6 +1,9 @@
 package store
 
-import "testing"
+import (
+	"context"
+	"testing"
+)
 
 func TestStateWillCallUpdate(t *testing.T) {
 	state := State{
@@ -10,7 +13,7 @@ func TestStateWillCallUpdate(t *testing.T) {
 	}
 
 	testAction := "Test action"
-	updatedState, err := performUpdates(state, testAction)
+	updatedState, err := performUpdates(context.Background(), state, testAction)
 	if err != nil {
 		t.Fatal(err)
 		return
@@ -35,7 +38,7 @@ type testUpdater struct {
 	actions []interface{}
 }
 
-func (u testUpdater) Update(action interface{}) (Updater, error) {
+func (u testUpdater) Update(_ context.Context, action interface{}) (Updater, error) {
 	var newActions []interface{}
 	if u.actions == nil {
 		newActions = []interface{}{action}
