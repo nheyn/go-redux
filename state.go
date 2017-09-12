@@ -14,8 +14,10 @@ func (selSt *State) SelectFrom(currSt *State) {
 func performUpdates(s State, action interface{}) (State, error) {
 	updateChan := make(chan keyedData, len(s))
 	errChan := make(chan error, len(s))
+	performUpdate := getPerformUpdateFor(action, updateChan, errChan)
+
 	for key, data := range s {
-		go performUpdate(keyedData{key, data}, action, updateChan, errChan)
+		go performUpdate(keyedData{key, data})
 	}
 
 	newState := State{}
@@ -31,19 +33,21 @@ func performUpdates(s State, action interface{}) (State, error) {
 	return newState, nil
 }
 
+// Creates a function that will get the updated version of the given updater.
+func getPerformUpdateFor(action interface{}, outChan chan<- keyedData, errChan chan<- error) func(keyedData) {
+	return func(in keyedData) {
+		newData, err := in.data.Update(action)
+		if err != nil {
+			errChan <- err
+			return
+		}
+
+		outChan <- keyedData{key: in.key, data: newData}
+	}
+}
+
 // A data Updater from a State, with it's assigned key.
 type keyedData struct {
 	key  interface{}
 	data Updater
-}
-
-// Gets the updated version of the given updater.
-func performUpdate(in keyedData, action interface{}, outChan chan<- keyedData, errChan chan<- error) {
-	newData, err := in.data.Update(action)
-	if err != nil {
-		errChan <- err
-		return
-	}
-
-	outChan <- keyedData{key: in.key, data: newData}
 }
