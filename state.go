@@ -68,17 +68,17 @@ type keyedData struct {
 }
 
 // The key for a Value that should be added to the ctx
-type keyContextKey int
+type contextKey int
 
-const keyKey = keyContextKey(0)
+const keyKey contextKey = 0
 
-// KeyFromContext, when called in .Update(...) method of an Updater, will get the key that was the
+// KeyFrom, when called in .Update(...) method of an Updater, will get the key that was the
 // current Updater was registered to the store under.
-func KeyFromContext(ctx context.Context) (interface{}, bool) {
+func KeyFrom(ctx context.Context) (interface{}, bool) {
 	key := ctx.Value(keyKey)
-  if key == nil {
-    return nil, false
-  }
+	if key == nil {
+		return nil, false
+	}
 
-  return key, true
+	return key, true
 }
