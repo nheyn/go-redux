@@ -12,7 +12,7 @@ type Store struct {
 // Creates a new Store that start with the given state.
 func New(initialState State) Store {
 	s := Store{
-		actionQueue:       make(chan queuedAction, 8), //NOTE, 8 was randomly chosen - do test to see what works
+		actionQueue:       make(chan queuedAction),
 		accessState:       make(chan func(*State)),
 		accessSubscribers: make(chan func(*subscriberSet)),
 	}
