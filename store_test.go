@@ -234,3 +234,37 @@ func TestStoreWillUpdateSubscribers(t *testing.T) {
 
 	wg.Wait()
 }
+
+func TestStoreCanErrorDuringDispatch(t *testing.T) {
+	state := State{
+		"Updater 0": testUpdater{},
+		"Updater 1": testUpdaterError{},
+		"Updater 2": testUpdater{},
+	}
+
+	st := New(state)
+	testAction := "Test action"
+	err := st.Dispatch(context.Background(), testAction)
+	if err == nil {
+		t.Error("The .Dispatch(...) method should have retuned an error when the error does")
+	}
+
+	currState := State{}
+	st.Select(&currState)
+
+	for key, data := range currState {
+		var actions []interface{}
+		switch currData := data.(type) {
+		case testUpdater:
+			actions = currData.actions
+		case testUpdaterError:
+			actions = currData.actions
+		default:
+			t.Error("Invalid test setup, on testUpdater and testUpdaterError Updaters should be used")
+		}
+
+		if len(actions) != 0 {
+			t.Error("The", key, "updater should not have been passed any actions, but has", len(actions))
+		}
+	}
+}
