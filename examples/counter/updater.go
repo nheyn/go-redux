@@ -3,7 +3,7 @@ package main
 import (
   "context"
   "errors"
-  "github.com/nheyn/store"
+  "github.com/nheyn/go-redux/store"
 )
 
 // Updater

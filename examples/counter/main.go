@@ -3,7 +3,7 @@ package main
 import (
   "context"
   "fmt"
-  "github.com/nheyn/store"
+  "github.com/nheyn/go-redux/store"
 )
 
 func main() {

@@ -1,6 +1,6 @@
 package main
 
-import "github.com/nheyn/store"
+import "github.com/nheyn/go-redux/store"
 
 // Selector
 type countInfo struct {
