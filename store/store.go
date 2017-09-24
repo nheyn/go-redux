@@ -2,8 +2,12 @@ package store
 
 import "context"
 
+// A PerformDispatch function is used to dispatch the given action to given State.
+type PerformDispatch func(context.Context, State, interface{}) (State, error)
+
 // A Store keeps track of data in a State, and "attempts to make state mutations predictable".
 type Store struct {
+	PerformDispatch
 	actionQueue       chan queuedAction
 	accessState       chan func(*State)
 	accessSubscribers chan func(*subscriberSet)
@@ -12,6 +16,7 @@ type Store struct {
 // Creates a new Store that start with the given state.
 func New(initialState State) Store {
 	s := Store{
+		PerformDispatch:   performUpdates,
 		actionQueue:       make(chan queuedAction),
 		accessState:       make(chan func(*State)),
 		accessSubscribers: make(chan func(*subscriberSet)),
@@ -87,7 +92,7 @@ func (s Store) performAction(ctx context.Context, action interface{}) error {
 	currState := State{}
 	s.Select(&currState)
 
-	newState, err := performUpdates(ctx, currState, action)
+	newState, err := s.PerformDispatch(ctx, currState, action)
 	if err != nil {
 		return err
 	}
