@@ -14,14 +14,21 @@ type Store struct {
 }
 
 // Creates a new Store that start with the given state.
-func New(initialState State) Store {
+func New(initialState State, configs ...func(*Store)) Store {
 	s := Store{
-		PerformDispatch:   performUpdates,
+		PerformDispatch:   nil,
 		actionQueue:       make(chan queuedAction),
 		accessState:       make(chan func(*State)),
 		accessSubscribers: make(chan func(*subscriberSet)),
 	}
 
+	// Configure store
+	defaultConfigs := []func(*Store){defaultPeformDispatchConfig}
+	for _, config := range append(defaultConfigs, configs...) {
+		config(&s)
+	}
+
+	// Start store
 	go s.trackState(initialState)
 	go s.listenForActions()
 	go s.trackSubscribers()

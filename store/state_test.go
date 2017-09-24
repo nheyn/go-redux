@@ -5,6 +5,13 @@ import (
 	"testing"
 )
 
+func performUpdates(ctx context.Context, st State, action interface{}) (State, error) {
+	s := Store{}
+	defaultPeformDispatchConfig(&s)
+
+	return s.PerformDispatch(ctx, st, action)
+}
+
 func TestStateWillCallUpdate(t *testing.T) {
 	state := State{
 		"Updater 0": testUpdater{},

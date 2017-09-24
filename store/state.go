@@ -12,33 +12,35 @@ func (selSt *State) SelectFrom(currSt *State) {
 	}
 }
 
-// Gets the updated version of the updaters in the given state, after the action is performed on them.
-func performUpdates(ctx context.Context, s State, action interface{}) (State, error) {
-	cancelableCtx, cancel := context.WithCancel(ctx)
-	defer cancel()
+// A store config that will use make the Store use the default state update function.
+func defaultPeformDispatchConfig(s *Store) {
+	s.PerformDispatch = func(ctx context.Context, st State, action interface{}) (State, error) {
+		cancelableCtx, cancel := context.WithCancel(ctx)
+		defer cancel()
 
-	updateChan := make(chan keyedData, len(s))
-	errChan := make(chan error, len(s))
+		updateChan := make(chan keyedData, len(st))
+		errChan := make(chan error, len(st))
 
-	performUpdate := getPerformUpdateFor(cancelableCtx, action, updateChan, errChan)
+		performUpdate := getPerformUpdateFor(cancelableCtx, action, updateChan, errChan)
 
-	for key, data := range s {
-		go performUpdate(keyedData{key, data})
-	}
-
-	newState := State{}
-	for len(newState) != len(s) {
-		select {
-		case update := <-updateChan:
-			newState[update.key] = update.data
-		case <-ctx.Done():
-			return nil, ctx.Err()
-		case err := <-errChan:
-			return nil, err
+		for key, data := range st {
+			go performUpdate(keyedData{key, data})
 		}
-	}
 
-	return newState, nil
+		newState := State{}
+		for len(newState) != len(st) {
+			select {
+			case update := <-updateChan:
+				newState[update.key] = update.data
+			case <-ctx.Done():
+				return nil, ctx.Err()
+			case err := <-errChan:
+				return nil, err
+			}
+		}
+
+		return newState, nil
+	}
 }
 
 // Creates a function that will get the updated version of the given updater.
