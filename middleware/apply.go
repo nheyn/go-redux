@@ -6,9 +6,6 @@ import (
 )
 
 // A middleware.Func is function that can act as middleware for a go-redux Store.
-type Next func(context.Context, interface{}) error
-
-// A middleware.Func is function that can act as middleware for a go-redux Store.
 type Func func(context.Context, interface{}, Next) error
 
 // Apply returns the configuration function that can be passed to store.New(...). It will wrap

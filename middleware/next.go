@@ -1,0 +1,30 @@
+package middleware
+
+import "context"
+
+// A middleware.Func is function that can act as middleware for a go-redux Store.
+type Next func(context.Context, interface{}) error
+
+// Creates a function that will generate a Next function that will call the given
+// middleware Func.
+func createNextGenerator(mws ...Func) func(Next) Next {
+	if len(mws) == 0 {
+		return func(next Next) Next { return next }
+	}
+	currMw := mws[0]
+	getCurrNext := func(next Next) Next {
+		return func(ctx context.Context, action interface{}) error {
+			return currMw(ctx, action, next)
+		}
+	}
+
+	if len(mws) == 1 {
+		return getCurrNext
+	}
+	remainingMws := mws[1:]
+	getRemainingNext := createNextGenerator(remainingMws...)
+
+	return func(next Next) Next {
+		return getCurrNext(getRemainingNext(next))
+	}
+}
