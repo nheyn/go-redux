@@ -12,7 +12,8 @@ func (selSt *State) SelectFrom(currSt *State) {
 	}
 }
 
-// A store config that will use make the Store use the default state update function.
+// A config function that will use make the given Store use the default state update function, which
+// is returned from getPerformUpdateFor(...).
 func defaultPeformDispatchConfig(s *Store) {
 	s.PerformDispatch = func(ctx context.Context, st State, action interface{}) (State, error) {
 		cancelableCtx, cancel := context.WithCancel(ctx)
@@ -43,23 +44,25 @@ func defaultPeformDispatchConfig(s *Store) {
 	}
 }
 
-// Creates a function that will get the updated version of the given updater.
+// Creates a function that will pefrom the update for the given action with the given context. The
+// given channeles will return all data and/or errors, so the returned function should be called
+// on a seperate goroutine.
 func getPerformUpdateFor(
 	ctx context.Context,
 	action interface{},
-	outChan chan<- keyedData,
+	updateChan chan<- keyedData,
 	errChan chan<- error,
 ) func(keyedData) {
-	return func(in keyedData) {
-		ctxWithKey := context.WithValue(ctx, keyKey, in.key)
+	return func(inital keyedData) {
+		ctxWithKey := contextWithKey(ctx, inital.key)
 
-		newData, err := in.data.Update(ctxWithKey, action)
+		updatedData, err := inital.data.Update(ctxWithKey, action)
 		if err != nil {
 			errChan <- err
 			return
 		}
 
-		outChan <- keyedData{key: in.key, data: newData}
+		updateChan <- keyedData{key: inital.key, data: updatedData}
 	}
 }
 
@@ -74,8 +77,13 @@ type contextKey int
 
 const keyKey contextKey = 0
 
-// KeyFrom, when called in .Update(...) method of an Updater, will get the key that was the
-// current Updater was registered to the store under.
+// Will add the given key to the context, so it can be accessed by KeyFrom(...).
+func contextWithKey(ctx context.Context, key interface{}) context.Context {
+	return context.WithValue(ctx, keyKey, key)
+}
+
+// When called in the .Update(...) method of an Updater, it will get the Store key for the
+// current Updater.
 func KeyFrom(ctx context.Context) (interface{}, bool) {
 	key := ctx.Value(keyKey)
 	if key == nil {
