@@ -6,8 +6,8 @@ import (
 )
 
 func performUpdates(ctx context.Context, st State, action interface{}) (State, error) {
-	s := Store{}
-	defaultPeformDispatchConfig(&s)
+	s := &Store{}
+	defaultPeformDispatchConfig(s)
 
 	return s.PerformDispatch(ctx, st, action)
 }

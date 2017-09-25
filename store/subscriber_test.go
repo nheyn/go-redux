@@ -7,9 +7,9 @@ import (
 
 func TestSubscriberSetCanSubscribe(t *testing.T) {
 	testSubs := []subscriber{
-		make(chan Store),
-		make(chan Store),
-		make(chan Store),
+		make(chan *Store),
+		make(chan *Store),
+		make(chan *Store),
 	}
 
 	subs := &subscriberSet{}
@@ -33,9 +33,9 @@ func TestSubscriberSetCanSubscribe(t *testing.T) {
 
 func TestSubscriberSetCanUnsubscribe(t *testing.T) {
 	testSubs := []subscriber{
-		make(chan Store),
-		make(chan Store),
-		make(chan Store),
+		make(chan *Store),
+		make(chan *Store),
+		make(chan *Store),
 	}
 
 	subs := &subscriberSet{}
@@ -71,7 +71,7 @@ func TestSubscriberSetCanPublish(t *testing.T) {
 	var wg sync.WaitGroup
 	wg.Add(subscribers)
 	for i := 0; i < subscribers; i++ {
-		sub := make(chan Store)
+		sub := make(chan *Store)
 		subs.add(sub)
 
 		go func() {
