@@ -126,9 +126,9 @@ func TestStoreWillTrackSubscribers(t *testing.T) {
 	}
 
 	testSubs := []subscriber{
-		make(chan Store),
-		make(chan Store),
-		make(chan Store),
+		make(chan *Store),
+		make(chan *Store),
+		make(chan *Store),
 	}
 
 	st := New(state)
@@ -189,7 +189,7 @@ func TestStoreWillUpdateSubscribers(t *testing.T) {
 	var wg sync.WaitGroup
 	wg.Add(subscribers)
 	for i := 0; i < subscribers; i++ {
-		testSub := make(chan Store, actionPerSubscriber)
+		testSub := make(chan *Store, actionPerSubscriber)
 		st.Subscribe(testSub)
 
 		go func() {

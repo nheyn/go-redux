@@ -1,7 +1,7 @@
 package store
 
 // A subscriber is a channel that will send the Store on updates.
-type subscriber chan<- Store
+type subscriber chan<- *Store
 
 // A map that repecents a set of subscribers.
 type subscriberSet map[subscriber]struct{}
@@ -25,7 +25,7 @@ func (subs *subscriberSet) remove(sub subscriber) bool {
 }
 
 // Sends the given Store to all of the set's subscribers.
-func (subs *subscriberSet) publish(st Store) {
+func (subs *subscriberSet) publish(st *Store) {
 	for sub, _ := range *subs {
 		sub <- st
 	}
