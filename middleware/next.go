@@ -1,6 +1,9 @@
 package middleware
 
-import "context"
+import (
+	"context"
+	"github.com/nheyn/go-redux/store"
+)
 
 // A middleware.Func is function that can act as middleware for a go-redux Store.
 type Next func(context.Context, interface{}) error
@@ -26,5 +29,20 @@ func createNextGenerator(mws ...Func) func(Next) Next {
 
 	return func(next Next) Next {
 		return getCurrNext(getRemainingNext(next))
+	}
+}
+
+// Returns a Next function that will perform the default dispatch(...) behavoir when called by
+// a middleware Func. The new will be saved in updatedState after the returned next func is
+// called, unless it returned an error.
+func createBaseNext(dispatch store.PerformDispatch, st store.State, updatedSt *store.State) Next {
+	return func(ctx context.Context, action interface{}) error {
+		newSt, err := dispatch(ctx, st, action)
+		if err != nil {
+			return err
+		}
+
+		updatedSt.SelectFrom(&newSt)
+		return nil
 	}
 }

@@ -2,6 +2,7 @@ package middleware
 
 import (
 	"context"
+	"github.com/nheyn/go-redux/store"
 	"testing"
 )
 
@@ -71,10 +72,10 @@ func TestGeneratedNextWillPassThroughItArguments(t *testing.T) {
 	}
 
 	if finalCtx != testCtx {
-		t.Error("The base next function was called with the incorrect context")
+		t.Error("The generated next function was called with the incorrect context")
 	}
 	if finalAction != testAction {
-		t.Error("The base next function was called with the incorrect actions")
+		t.Error("The generated next function was called with the incorrect actions")
 	}
 }
 
@@ -107,4 +108,65 @@ func TestGeneratedNextWillCallMiddlewareInOrder(t *testing.T) {
 			t.Error("The middleware.Func called at", i, ", but should have been called at", callIndex)
 		}
 	}
+}
+
+func TestBaseNextCallsDispatchWithContextAndAction(t *testing.T) {
+	var dispatchedCtx context.Context
+	var dispatchedAction interface{}
+	baseNext := createBaseNext(func(ctx context.Context, s store.State, action interface{}) (store.State, error) {
+		dispatchedCtx = ctx
+		dispatchedAction = action
+
+		return s, nil
+	}, nil, nil)
+
+	testCtx := context.Background()
+	testAction := "test action"
+	err := baseNext(testCtx, testAction)
+	if err != nil {
+		t.Error(err)
+	}
+
+	if dispatchedCtx != testCtx {
+		t.Error("The base next function was called with the incorrect context")
+	}
+
+	if dispatchedAction != testAction {
+		t.Error("The base next function was called with the incorrect action")
+	}
+}
+
+func TestBaseNextUpdatesTheState(t *testing.T) {
+	testState := store.State{"testKey": testUpdater("testUpdater")}
+	updatedState := store.State{}
+	baseNext := createBaseNext(func(ctx context.Context, s store.State, action interface{}) (store.State, error) {
+		return testState, nil
+	}, store.State{}, &updatedState)
+
+	err := baseNext(nil, nil)
+	if err != nil {
+		t.Error(err)
+	}
+
+	if len(testState) != len(updatedState) {
+		t.Error("The updated state has", len(updatedState), "Updaters but should have", len(testState))
+	}
+
+	for key, testUpdater := range testState {
+		currUpdater, exits := updatedState[key]
+		if !exits {
+			t.Error("The Updater with key", key, "is not in the updated state")
+			continue
+		}
+
+		if currUpdater != testUpdater {
+			t.Error("The Updater with key", key, "is no the updater that was set during dispatch")
+		}
+	}
+}
+
+type testUpdater string
+
+func (t testUpdater) Update(_ context.Context, _ interface{}) (store.Updater, error) {
+	return t, nil
 }
